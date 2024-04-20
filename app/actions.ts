@@ -27,24 +27,25 @@ export async function createCompletion(prompt: string) {
     }
   ]
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4',
-    messages
-  })
+  const [completion, image] = await Promise.all([
+    openai.chat.completions.create({
+      model: 'gpt-4',
+      messages
+    }),
+    openai.images.generate({
+      model: 'dall-e-3',
+      prompt: `Generate an image for a blog post about "${prompt}"`,
+      n: 1,
+      size: '1792x1024',
+      response_format: 'b64_json'
+    })
+  ])
 
   const content = completion?.choices?.[0]?.message?.content
 
   if (!content) {
     return { error: 'Unable to generate the blog content.' }
   }
-
-  const image = await openai.images.generate({
-    model: 'dall-e-3',
-    prompt: `Generate an image for a blog post about "${prompt}"`,
-    n: 1,
-    size: '1792x1024',
-    response_format: 'b64_json'
-  })
 
   const imageName = `blog-${Date.now()}`
 
@@ -63,6 +64,7 @@ export async function createCompletion(prompt: string) {
   }
 
   const path = data?.path
+
   const imageUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/ai-blog-images/${path}`
 
   const { data: blog, error: blogError } = await supabase
