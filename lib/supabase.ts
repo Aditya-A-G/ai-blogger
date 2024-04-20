@@ -16,7 +16,7 @@ export async function getBlogById(id: number) {
 }
 
 export async function getAllBlogs() {
-  const { data, error } = supabase
+  const { data, error } = await supabase
     .from('blogs')
     .select()
     .order('created_at', { ascending: false })
