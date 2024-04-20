@@ -5,12 +5,19 @@ import { decode } from 'base64-arraybuffer'
 import { supabase } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { auth } from '@clerk/nextjs/server'
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY })
 
 export async function createCompletion(prompt: string) {
   if (!prompt) {
     return { error: 'Prompt is required.' }
+  }
+
+  const { userId } = auth()
+
+  if (!userId) {
+    return { error: 'User is not logged in' }
   }
 
   const messages: any = [
@@ -60,7 +67,7 @@ export async function createCompletion(prompt: string) {
 
   const { data: blog, error: blogError } = await supabase
     .from('blogs')
-    .insert([{ title: prompt, content, imageUrl, userId: '123' }])
+    .insert([{ title: prompt, content, imageUrl, userId }])
     .select()
 
   if (blogError) {

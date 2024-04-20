@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^5.0.1",
     "@radix-ui/react-slot": "^1.0.2",
     "@supabase/supabase-js": "^2.42.5",
     "base64-arraybuffer": "^1.0.2",
