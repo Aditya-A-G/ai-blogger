@@ -14,9 +14,17 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import { useFormStatus } from 'react-dom'
-import { SignInButton, SignedIn, SignedOut } from '@clerk/nextjs'
+import { SignInButton, SignedIn, SignedOut, useUser } from '@clerk/nextjs'
+import { Zap } from 'lucide-react'
+import PaymentDialog from './payment-dialog'
+import { useState } from 'react'
 
 export default function Form() {
+  const { isSignedIn, user } = useUser()
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+
+  const credits = user?.publicMetadata?.credits
+
   async function action(formData: FormData) {
     const prompt = formData.get('prompt')
     if (!prompt) {
@@ -24,21 +32,60 @@ export default function Form() {
       return
     }
 
+    if (typeof credits !== 'number' || credits <= 0) {
+      toast.error('You have no credits left.', {
+        action: {
+          label: 'Get more',
+          onClick: () => setPaymentDialogOpen(true)
+        }
+      })
+      return
+    }
+
     const result = await createCompletion(prompt as string)
 
     if (result?.error) {
+      if (result?.status === 402) {
+        toast.error('You have no credits left.', {
+          action: {
+            label: 'Get more',
+            onClick: () => setPaymentDialogOpen(true)
+          }
+        })
+      }
       toast.error(result.error)
     }
   }
 
   return (
-    <section className='mx-auto max-w-lg'>
+    <section className='mx-auto max-w-xl'>
       <Card className='border-0 shadow-none'>
         <CardHeader className='text-center'>
           <CardTitle>AI Blogger</CardTitle>
           <CardDescription>Generate a blog post about anything</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className='flex justify-between items-center'>
+          {isSignedIn && (
+            <div className='flex items-center gap-2'>
+              <Zap className='h-5 w-5 text-emerald-500' />
+
+              <span className='text-sm text-zinc-500'>Credits: </span>
+              <span className='font-medium'>
+                {typeof credits === 'number' ? credits : 0}
+              </span>
+            </div>
+          )}
+          {isSignedIn && (
+            <Button
+              size='sm'
+              variant='secondary'
+              onClick={() => setPaymentDialogOpen(true)}
+            >
+              Get more credits
+            </Button>
+          )}
+          </div>
           <form action={action} className='mt-3'>
             <Input
               name='prompt'
@@ -49,6 +96,10 @@ export default function Form() {
           </form>
         </CardContent>
       </Card>
+      <PaymentDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+      />
     </section>
   )
 }

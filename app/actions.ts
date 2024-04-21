@@ -5,7 +5,12 @@ import { decode } from 'base64-arraybuffer'
 import { supabase } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@clerk/nextjs/server'
+import { clerkClient, currentUser } from '@clerk/nextjs/server'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: '2024-04-10'
+})
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY })
 
@@ -14,11 +19,24 @@ export async function createCompletion(prompt: string) {
     return { error: 'Prompt is required.' }
   }
 
-  const { userId } = auth()
+  const user = await currentUser()
+  const userId = user?.id
 
   if (!userId) {
     return { error: 'User is not logged in' }
   }
+
+  const credits = Number(user.publicMetadata?.credits || 0)
+
+  if (!credits) {
+    return { error: 'You have no credits left.', status: 402 }
+  }
+
+  await clerkClient.users.updateUserMetadata(userId, {
+    publicMetadata: {
+      credits: credits - 1
+    }
+  })
 
   const messages: any = [
     {
@@ -79,4 +97,65 @@ export async function createCompletion(prompt: string) {
   const blogId = blog?.[0]?.id
   revalidatePath('/')
   redirect(`/blog/${blogId}`)
+}
+
+type LineItem = Stripe.Checkout.SessionCreateParams.LineItem
+
+export async function createStripeCheckoutSession(lineItems: LineItem[]) {
+  const user = await currentUser()
+  if (!user) {
+    return { sessionId: null, checkoutError: 'You need to sign in first.' }
+  }
+
+  const origin = process.env.NEXT_PUBLIC_SITE_URL as string
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    line_items: lineItems,
+    success_url: `${origin}/checkout?sessionId={CHECKOUT_SESSION_ID}`,
+    cancel_url: origin,
+    customer_email: user.emailAddresses[0].emailAddress
+  })
+
+  return { sessionId: session.id, checkoutError: null }
+}
+
+export async function retrieveStripeCheckoutSession(sessionId: string) {
+  if (!sessionId) {
+    return { success: false, error: 'No session ID provided.' }
+  }
+
+  const user = await currentUser()
+  if (!user) {
+    return { success: false, error: 'You need to sign in first.' }
+  }
+
+  const previousCheckoutSessionIds = Array.isArray(
+    user.publicMetadata.checkoutSessionIds
+  )
+    ? user.publicMetadata.checkoutSessionIds
+    : []
+
+  if (previousCheckoutSessionIds.includes(sessionId)) {
+    return {
+      success: true,
+      error: null
+    }
+  }
+
+  const session = await stripe.checkout.sessions.retrieve(sessionId)
+
+  await clerkClient.users.updateUserMetadata(user.id, {
+    publicMetadata: {
+      credits: 20,
+      checkoutSessionIds: [...previousCheckoutSessionIds, sessionId],
+      stripeCustomerId: session.customer,
+      stripePaymentId:
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id
+    }
+  })
+
+  return { success: true, error: null }
 }
