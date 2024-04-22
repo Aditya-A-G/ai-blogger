@@ -37,7 +37,7 @@ export default function PaymentDialog(
     try {
       const lineItems = [
         {
-          price: process.env.STRIPE_PRICE_ID,
+          price: `${process.env.NEXT_PUBLIC_STRIPE_PRICE_ID}`,
           quantity: 1
         }
       ]
