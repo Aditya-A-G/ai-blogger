@@ -17,8 +17,11 @@ bun dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 # Media
+Video
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/0ZnR9GssL5s/0.jpg)](https://www.youtube.com/watch?v=0ZnR9GssL5s)
+
+Images 
 
 ![payment-plans](https://github.com/Aditya-A-G/ai-blogger/assets/65503300/294f9bc6-ff00-428a-b8da-89bfa2dbc029)
 
