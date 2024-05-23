@@ -26,8 +26,8 @@ export default function RootLayout({
   OneSignalDeferred.push(function(OneSignal) {
     OneSignal.init({
       appId: "02b9c047-5eca-4d24-8e3a-13cfee1e4623",
-    });
-  });
+    })
+  })
 </script>
       </head>
       <ClerkProvider>
