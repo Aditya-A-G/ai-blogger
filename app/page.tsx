@@ -1,4 +1,5 @@
 import Form from '@/components/form'
+import Notification from '../components/notification'
 import { Card, CardContent } from '@/components/ui/card'
 import { getAllBlogs } from '@/lib/supabase'
 import { formatDate } from '@/lib/utils'
@@ -7,8 +8,9 @@ import Link from 'next/link'
 
 export default async function Home() {
   const blogs = await getAllBlogs()
-  
   return (
+    <>
+    <Notification/>
     <section className='py-24'>
       <div className='container'>
         <Form />
@@ -45,5 +47,6 @@ export default async function Home() {
         </div>
       </div>
     </section>
+    </>
   )
 }

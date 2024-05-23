@@ -19,17 +19,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang='en'>
-      <head>
-      <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(function(OneSignal) {
-    OneSignal.init({
-      appId: "02b9c047-5eca-4d24-8e3a-13cfee1e4623",
-    })
-  })
-</script>
-      </head>
       <ClerkProvider>
       <body className={inter.className}>
         <Header />
