@@ -1,31 +1,6 @@
-'use client'
-
 import Link from 'next/link'
-import { toast } from 'sonner'
-import { useEffect } from 'react'
-import { useClerk } from '@clerk/nextjs'
-import { useSearchParams } from 'next/navigation'
-import { retrieveStripeCheckoutSession } from '@/app/actions'
 import { MoveLeft } from 'lucide-react'
-
 export default function Checkout() {
-  const { session } = useClerk()
-  const searchParams = useSearchParams()
-  const sessionId = searchParams.get('sessionId')
-
-  useEffect(() => {
-    if (!sessionId || !session) return
-
-    retrieveStripeCheckoutSession(sessionId).then(({ success, error }) => {
-      if (success) {
-        session?.reload()
-      }
-
-      if (error) {
-        toast.error('Failed to retrieve checkout session!')
-      }
-    })
-  }, [sessionId, session])
 
   return (
     <section className='py-24'>
