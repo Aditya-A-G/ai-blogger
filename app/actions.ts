@@ -47,7 +47,7 @@ export async function createCompletion(prompt: string) {
 
   const [completion, image] = await Promise.all([
     openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini',
       messages
     }),
     openai.images.generate({
