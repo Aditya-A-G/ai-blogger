@@ -65,26 +65,26 @@ export default function Form() {
           <CardDescription>Generate a blog post about anything</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className='flex justify-between items-center'>
-          {isSignedIn && (
-            <div className='flex items-center gap-2'>
-              <Zap className='h-5 w-5 text-emerald-500' />
+          <div className='flex items-center justify-between'>
+            {isSignedIn && (
+              <div className='flex items-center gap-2'>
+                <Zap className='h-5 w-5 text-emerald-500' />
 
-              <span className='text-sm text-zinc-500'>Credits: </span>
-              <span className='font-medium'>
-                {typeof credits === 'number' ? credits : 0}
-              </span>
-            </div>
-          )}
-          {isSignedIn && (
-            <Button
-              size='sm'
-              variant='secondary'
-              onClick={() => setPaymentDialogOpen(true)}
-            >
-              Get more credits
-            </Button>
-          )}
+                <span className='text-sm text-zinc-500'>Credits: </span>
+                <span className='font-medium'>
+                  {typeof credits === 'number' ? credits : 0}
+                </span>
+              </div>
+            )}
+            {isSignedIn && (
+              <Button
+                size='sm'
+                variant='secondary'
+                onClick={() => setPaymentDialogOpen(true)}
+              >
+                Get more credits
+              </Button>
+            )}
           </div>
           <form action={action} className='mt-3'>
             <Input

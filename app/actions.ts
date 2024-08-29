@@ -6,10 +6,12 @@ import { supabase } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { clerkClient, currentUser } from '@clerk/nextjs/server'
-import Stripe from 'stripe'
+import Razorpay from 'razorpay'
+import crypto from 'crypto'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2024-04-10'
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET
 })
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY })
@@ -59,12 +61,14 @@ export async function createCompletion(prompt: string) {
     })
   ])
 
-  const content = completion?.choices?.[0]?.message?.content
-
-  if (!content) {
+  let response = completion?.choices?.[0]?.message?.content
+  if (!response) {
     return { error: 'Unable to generate the blog content.' }
   }
 
+  response = response.replace(/^`+|`+$/g, '')
+
+  const content = response.replace(/^markdown\s*/i, '')
   const imageName = `blog-${Date.now()}`
 
   const imageData = image?.data?.[0].b64_json as string
@@ -99,61 +103,92 @@ export async function createCompletion(prompt: string) {
   redirect(`/blog/${blogId}`)
 }
 
-type LineItem = Stripe.Checkout.SessionCreateParams.LineItem
-
-export async function createStripeCheckoutSession(lineItems: LineItem[]) {
-  const user = await currentUser()
-  if (!user) {
-    return { sessionId: null, checkoutError: 'You need to sign in first.' }
-  }
-
-  const origin = process.env.NEXT_PUBLIC_SITE_URL as string
-
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    line_items: lineItems,
-    success_url: `${origin}/checkout?sessionId={CHECKOUT_SESSION_ID}`,
-    cancel_url: origin,
-    customer_email: user.emailAddresses[0].emailAddress
-  })
-
-  return { sessionId: session.id, checkoutError: null }
+enum Plans {
+  BASIC = 10,
+  PRO = 30,
+  ENTERPRISE = 100
 }
 
-export async function retrieveStripeCheckoutSession(sessionId: string) {
-  if (!sessionId) {
-    return { success: false, error: 'No session ID provided.' }
+const planCredits = {
+  [Plans.BASIC]: 50,
+  [Plans.PRO]: 200,
+  [Plans.ENTERPRISE]: 750
+}
+
+export async function createRazorpayOrder(plan: keyof typeof Plans) {
+  const amount = Plans[plan] * 100
+  const options = {
+    amount,
+    currency: 'USD'
+  }
+  try {
+    const order = await razorpay.orders.create(options)
+    return order.id
+  } catch (error) {
+    console.error('Error creating Razorpay order: ', error)
+    return null
+  }
+}
+
+const generateSignature = (
+  razorpayOrderId: string,
+  razorpayPaymentId: string
+) => {
+  const keySecret = process.env.RAZORPAY_KEY_SECRET
+  if (!keySecret) {
+    throw new Error('Razorpay key secret is not defined in env variables.')
+  }
+
+  const sig = crypto
+    .createHmac('sha256', keySecret)
+    .update(razorpayOrderId + '|' + razorpayPaymentId)
+    .digest('hex')
+  return sig
+}
+
+export async function verifyPaymentSignature({
+  orderCreationId,
+  razorpayPaymentId,
+  razorpaySignature
+}: {
+  orderCreationId: string
+  razorpayPaymentId: string
+  razorpaySignature: string
+}) {
+  const signature = generateSignature(orderCreationId, razorpayPaymentId)
+
+  if (signature !== razorpaySignature) {
+    return { success: false, error: 'Payment signature mismatch.' }
   }
 
   const user = await currentUser()
+
   if (!user) {
     return { success: false, error: 'You need to sign in first.' }
   }
 
-  const previousCheckoutSessionIds = Array.isArray(
-    user.publicMetadata.checkoutSessionIds
-  )
-    ? user.publicMetadata.checkoutSessionIds
-    : []
+  const payment = await razorpay.orders.fetch(orderCreationId)
 
-  if (previousCheckoutSessionIds.includes(sessionId)) {
+  if (payment.status !== 'paid') {
     return {
-      success: true,
-      error: null
+      success: false,
+      error: `Payment not succeeded. status- ${payment.status}`
     }
   }
+  const amountPaid = payment.amount_paid / 100
 
-  const session = await stripe.checkout.sessions.retrieve(sessionId)
+  const creditsToAdd = Object.keys(Plans).find(
+    plan => Plans[plan as keyof typeof Plans] * 100 === amountPaid * 100
+  )
+
+  if (!creditsToAdd) {
+    return { success: false, error: 'Invalid payment amount.' }
+  }
+  const credits = planCredits[Plans[creditsToAdd as keyof typeof Plans]]
 
   await clerkClient.users.updateUserMetadata(user.id, {
     publicMetadata: {
-      credits: 20,
-      checkoutSessionIds: [...previousCheckoutSessionIds, sessionId],
-      stripeCustomerId: session.customer,
-      stripePaymentId:
-        typeof session.payment_intent === 'string'
-          ? session.payment_intent
-          : session.payment_intent?.id
+      credits: Number(user.publicMetadata?.credits || 0) + credits
     }
   })
 
