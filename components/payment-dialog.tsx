@@ -27,7 +27,7 @@ const tiers: {
   {
     name: 'Basic',
     id: 'BASIC',
-    price: 10,
+    price: 849,
     credits: 50,
     description: 'Create Amazing Blogs',
     features: ['50 credits', 'High Quality Images', 'Generate any Blog'],
@@ -36,7 +36,7 @@ const tiers: {
   {
     name: 'Pro',
     id: 'PRO',
-    price: 30,
+    price: 2512,
     credits: 200,
     description: 'Create Amazing Blogs',
     features: ['200 credits', 'High Quality Images', 'Generate any Blog'],
@@ -45,7 +45,7 @@ const tiers: {
   {
     name: 'Enterprise',
     id: 'ENTERPRISE',
-    price: 100,
+    price: 8400,
     credits: 750,
     description: 'Create Amazing Blogs',
     features: ['750 credits', 'High Quality Images', 'Generate any Blog'],
@@ -146,7 +146,7 @@ export default function PaymentDialog(
                   </p>
                   <p className='mt-6 flex items-baseline gap-x-1'>
                     <span className='text-4xl font-bold tracking-tight text-gray-900'>
-                      {tier.price} $
+                      {tier.price} Rs
                     </span>
                     <span className='text-sm font-semibold leading-6 text-gray-600'>
                       / {tier.credits} Credits
